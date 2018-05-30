@@ -1017,6 +1017,17 @@ h1.single-title {
 .right{
   float: right;
 }
+.evf-submit, #wp-submit{
+  background-color:  #00cc00 !important;
+
+}
+#tribe-events-lundi, #tribe-events-mardi, #tribe-events-mercredi, #tribe-events-jeudi, #tribe-events-vendredi, #tribe-events-samedi, #tribe-events-dimanche{
+  background-color:#198900;
+}
+.page-id-36 #comments, .page-id-38 #comments, .page-id-215 #comments{
+display: none;
+}
+
 /* affichage mobile */
 @media screen and (max-width: 700px){
 .site-title a{

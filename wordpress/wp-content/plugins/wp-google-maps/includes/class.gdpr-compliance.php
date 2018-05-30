@@ -12,24 +12,22 @@ class GDPRCompliance
 		add_filter('wpgmza_plugin_get_default_settings', array($this, 'onPluginGetDefaultSettings'));
 		
 		add_action('wp_ajax_wpgmza_gdpr_privacy_policy_notice_dismissed', array($this, 'onPrivacyPolicyNoticeDismissed'));
-		
-		$wpgmza_other_settings = get_option('WPGMZA_OTHER_SETTINGS');
-		if(empty($wpgmza_other_settings['wpgmza_gdpr_notice']))
-		{
-			$wpgmza_other_settings = array_merge($wpgmza_other_settings, $this->onPluginGetDefaultSettings(array()));
-			update_option('WPGMZA_OTHER_SETTINGS', $wpgmza_other_settings);
-		}
 	}
 	
 	public function onPluginGetDefaultSettings($settings)
 	{
 		return array_merge($settings, array(
 			'wpgmza_gdpr_enabled'		=> 1,
-			'wpgmza_gdpr_notice'		=> __('I agree for my personal data, provided via submission through \'User Generated Markers\' to be processed by {COMPANY_NAME}.
+			'wpgmza_gdpr_notice'		=> apply_filters('wpgmza_gdpr_notice',
+											__('I agree for my personal data, provided via submission through \'User Generated Markers\' where applicable, \'WP Google Maps\' Live Tracking app, where applicable, to be processed by {COMPANY_NAME}.
 		
-I agree for my personal data, provided via map API calls, to be processed by the API provider, for the purposes of geocoding (converting addresses to coordinates).
+I agree for my personal data, provided via map API calls, to be processed by the API provider, for the purposes of geocoding (converting addresses to coordinates), reverse geocoding and generating directions.
 
-When using the User Generated Marker addon, data will be stored indefinitiely for the following purpose(s): {RETENTION_PURPOSE}'),
+WP Google Maps uses jQuery DataTables to display sortable, searchable tables, such as that seen in the Advanced Marker Listing and on the Map Edit Page. jQuery DataTables in certain circumstances uses a cookie to save and later recall the "state" of a given table - that is, the search term, sort column and order and current page. This data is help in local storage and retained until this is cleared manually. No libraries used by WP Google Maps transmit this information.
+
+Some visual components of WP Google Maps use 3rd party libraries which are loaded over the network. At present the libraries are Google Maps, Open Street Map, jQuery DataTables and FontAwesome. When loading resources over a network, the 3rd party server will receive your IP address and User Agent string amongst other details. Please refer to the Privacy Policy of the respective libraries for details on how they use data and the process to exercise your rights under the GDPR regulations.
+
+When using the User Generated Marker addon, data will be stored indefinitiely for the following purpose(s): {RETENTION_PURPOSE}'), 'wp-google-maps'),
 			
 			'wpgmza_gdpr_retention_purpose' => 'presenting the data you have submitted on the map.'
 		));
@@ -39,11 +37,13 @@ When using the User Generated Marker addon, data will be stored indefinitiely fo
 	{
 		$wpgmza_other_settings = get_option('WPGMZA_OTHER_SETTINGS');
 		$wpgmza_other_settings['privacy_policy_notice_dismissed'] = true;
+		
 		update_option('WPGMZA_OTHER_SETTINGS', $wpgmza_other_settings);
 		
 		wp_send_json(array(
 			'success' => 1
 		));
+		
 		exit;
 	}
 	
@@ -53,13 +53,12 @@ When using the User Generated Marker addon, data will be stored indefinitiely fo
 		
 		$document = new DOMDocument();
 		$document->loadPHPFile(plugin_dir_path(__DIR__) . 'html/gdpr-compliance-settings.html.php');
-		
 		$document->populate($wpgmza_other_settings);
 		
 		return $document;
 	}
 	
-	public function getNoticeHTML()
+	public function getNoticeHTML($checkbox=true)
 	{
 		$wpgmza_other_settings = get_option('WPGMZA_OTHER_SETTINGS');
 		
@@ -68,10 +67,16 @@ When using the User Generated Marker addon, data will be stored indefinitiely fo
 		
 		$html = $wpgmza_other_settings['wpgmza_gdpr_notice'];
 		
-		$html = preg_replace('/{COMPANY_NAME}/i', $wpgmza_other_settings['wpgmza_gdpr_company_name'], $html);
-		$html = preg_replace('/{RETENTION_PURPOSE}/i', $wpgmza_other_settings['wpgmza_gdpr_retention_purpose'], $html);
+		$company_name 			= (empty($wpgmza_other_settings['wpgmza_gdpr_company_name']) ? '' : $wpgmza_other_settings['wpgmza_gdpr_company_name']);
+		$retention_period_days 	= (empty($wpgmza_other_settings['wpgmza_gdpr_retention_period_days']) ? '' : $wpgmza_other_settings['wpgmza_gdpr_retention_period_days']);
+		$retention_purpose		= (empty($wpgmza_other_settings['wpgmza_gdpr_retention_purpose']) ? '' : $wpgmza_other_settings['wpgmza_gdpr_retention_purpose']);
 		
-		$html = '<div class="wpgmza-gdpr-notice"><input type="checkbox" name="wpgmza_ugm_gdpr_consent" required/> ' . $html . '</div>';
+		$html = preg_replace('/{COMPANY_NAME}/i', $company_name, $html);
+		$html = preg_replace('/{RETENTION_PERIOD}/i', $retention_period_days, $html);
+		$html = preg_replace('/{RETENTION_PURPOSE}/i', $retention_purpose, $html);
+		
+		if($checkbox)
+			$html = '<input type="checkbox" name="wpgmza_ugm_gdpr_consent" required/> ' . $html;
 		
 		$html = apply_filters('wpgmza_gdpr_notice_html', $html);
 		
@@ -92,9 +97,14 @@ When using the User Generated Marker addon, data will be stored indefinitiely fo
 			";
 	}
 	
-	public function onGlobalSettingsTabs()
+	public function getConsentPromptHTML()
 	{
-		return "<li><a href=\"#wpgmza-gdpr-compliance\">".__("GDPR Compliance","wp-google-maps")."</a></li>";
+		return '<div>' . $this->getNoticeHTML(false) . "<p class='wpgmza-centered'><button class='wpgmza-api-consent'>" . __('I agree', 'wp-google-maps') . "</button></div></p>";
+	}
+	
+	public function onGlobalSettingsTabs($input)
+	{
+		return $input . "<li><a href=\"#wpgmza-gdpr-compliance\">".__("GDPR Compliance","wp-google-maps")."</a></li>";
 	}
 	
 	public function onGlobalSettingsTabContent()
@@ -109,13 +119,11 @@ When using the User Generated Marker addon, data will be stored indefinitiely fo
 		$document->populate($_POST);
 		
 		$wpgmza_other_settings = get_option('WPGMZA_OTHER_SETTINGS');
-		
 		if(!$wpgmza_other_settings)
 			$wpgmza_other_settings = array();
 		
-		foreach($document->querySelectorAll('input, select') as $input)
+		foreach($document->querySelectorAll('input, select, textarea') as $input)
 		{
-			
 			$name = $input->getAttribute('name');
 			
 			if(!$name)
@@ -123,20 +131,17 @@ When using the User Generated Marker addon, data will be stored indefinitiely fo
 			
 			switch($input->getAttribute('type'))
 			{
-				
 				case 'checkbox':
-					if(isset($wpgmza_other_settings[$name]))
-						unset($wpgmza_other_settings[$name]);
-					else
+					if($input->getValue())
 						$wpgmza_other_settings[$name] = 1;
+					else
+						unset($wpgmza_other_settings[$name]);
 					break;
 				
 				default:
 					$wpgmza_other_settings[$name] = stripslashes( $input->getValue() );
 					break;
-				
 			}
-			
 		}
 		
 		update_option('WPGMZA_OTHER_SETTINGS', $wpgmza_other_settings);

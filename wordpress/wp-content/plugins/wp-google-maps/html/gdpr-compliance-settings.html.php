@@ -40,10 +40,17 @@
 			<i class="fa fa-question-circle" 
 				title="<?php _e('Users will be asked to accept the notice shown here, in the form of a check box.', 'wp-google-maps'); ?>"></i>
 		</label>
-		<textarea name="wpgmza_gdpr_notice" readonly>I agree for my personal data, provided via submission through 'User Generated Markers' to be processed by {COMPANY_NAME}.
-		
-I agree for my personal data, provided via map API calls, to be processed by the API provider, for the purposes of geocoding (converting addresses to coordinates).
-
-When using the User Generated Marker addon, data will be stored indefinitiely for the following purpose(s): {RETENTION_PURPOSE}</textarea>
+		<textarea name="wpgmza_gdpr_notice"></textarea>
 	</fieldset>
+	
+	<!--<fieldset>
+		<label for="wpgmza_gdpr_require_consent_before_load">
+			<?php
+			_e('Require consent before load', 'wp-google-maps');
+			?>
+			<i class="fa fa-question-circle" 
+				title="<?php _e('Check this box if you would like to prevent the map API from loading until the user gives consent to the notice above.', 'wp-google-maps'); ?>"/>
+		</label>
+		<input name="wpgmza_gdpr_require_consent_before_load" type="checkbox"/>
+	</fieldset>-->
 </div>

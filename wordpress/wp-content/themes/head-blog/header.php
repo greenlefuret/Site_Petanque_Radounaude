@@ -7,5 +7,5 @@
 		<link rel="pingback" href="<?php bloginfo( 'pingback_url' ); ?>" />
 		<?php wp_head(); ?>
 	</head>
-	<body id="blog" <?php body_class(); ?>>
+	<body id="blog" <?php body_class( $class ); ?>>
 		<?php get_template_part( 'template-parts/template-part', 'topnav' ); ?>
